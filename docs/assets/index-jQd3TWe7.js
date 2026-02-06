@@ -21108,7 +21108,7 @@ const Wy = () => {
       "data-html2canvas-ignore": "true",
       className: "my-8 px-2",
       children: O.jsxs("a", {
-        href: "https://link.coupang.com/a/dHwZv9",
+        href: "https://link.coupang.com/a/dHytTn",
         target: "_blank",
         rel: "noopener noreferrer",
         className:
