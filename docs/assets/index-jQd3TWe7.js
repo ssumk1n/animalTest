@@ -21121,7 +21121,7 @@ const Wy = () => {
                 className:
                   "w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-50 border border-slate-100",
                 children: O.jsx("img", {
-                  src: "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=200&auto=format&fit=crop",
+                  src: "https://ssumk1n.github.io/animalTest/assets/animalImg.png",
                   alt: "Rocket Fresh",
                   className:
                     "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500",
