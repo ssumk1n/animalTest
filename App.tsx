@@ -19,12 +19,16 @@ const App: React.FC = () => {
   const [lastChoice, setLastChoice] = useState<number | null>(null);
   const [viewingAnimal, setViewingAnimal] = useState<AnimalKey | null>(null);
   const [viewingContext, setViewingContext] = useState<MatchContext>(null);
+  const [myResultKey, setMyResultKey] = useState<AnimalKey | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const resultParam = params.get("result") as AnimalKey;
+    const resultParam = params.get("result") as AnimalKey | null;
+
     if (resultParam && ANIMAL_DATA[resultParam]) {
-      setViewingAnimal(resultParam);
+      setMyResultKey(resultParam); // ✅ 내 결과로 저장
+      setViewingAnimal(null); // ✅ 구경 상태는 비움
+      setViewingContext(null);
       setState("RESULT");
     }
   }, []);
@@ -39,6 +43,7 @@ const App: React.FC = () => {
     setLastChoice(null);
     setViewingAnimal(null);
     setViewingContext(null);
+    setMyResultKey(null);
   };
 
   const resetToStart = () => {
@@ -51,6 +56,7 @@ const App: React.FC = () => {
     setLastChoice(null);
     setViewingAnimal(null);
     setViewingContext(null);
+    setMyResultKey(null);
   };
 
   const handleBack = () => {
@@ -74,17 +80,41 @@ const App: React.FC = () => {
 
   const showResult = () => {
     if (lastChoice !== null) {
-      setAnswers((prev) => [...prev, lastChoice]);
+      const allAnswers = [...answers, lastChoice];
+
+      // 점수 계산
+      const scoreMap: Record<string, number> = {};
+      Object.keys(ANIMAL_DATA).forEach((a) => (scoreMap[a] = 0));
+
+      allAnswers.forEach((choiceIdx, qIdx) => {
+        const selectedChoice = QUESTIONS[qIdx]?.choices[choiceIdx];
+        if (selectedChoice) {
+          Object.entries(selectedChoice.scores).forEach(([animal, score]) => {
+            scoreMap[animal] = (scoreMap[animal] || 0) + score;
+          });
+        }
+      });
+
+      const winnerKey = (Object.keys(ANIMAL_DATA) as AnimalKey[]).reduce(
+        (a, b) => (scoreMap[a] >= scoreMap[b] ? a : b)
+      );
+
+      setMyResultKey(winnerKey); // ✅ 내 결과 고정 저장
+      setAnswers(allAnswers);
       setState("RESULT");
     }
   };
 
   const calculateResult = useCallback((): AnimalInfo => {
-    if (viewingAnimal && answers.length === 0)
-      return ANIMAL_DATA[viewingAnimal];
+    // ✅ 공유 링크로 들어왔거나, 테스트로 확정된 내 결과가 있으면 그걸 최우선
+    if (myResultKey) return ANIMAL_DATA[myResultKey];
+
+    // 아직 답이 다 안 모였으면 기본값
     if (answers.length < QUESTIONS.length) return ANIMAL_DATA["RAT"];
+
     const scoreMap: Record<string, number> = {};
     Object.keys(ANIMAL_DATA).forEach((a) => (scoreMap[a] = 0));
+
     answers.forEach((choiceIdx, qIdx) => {
       const selectedChoice = QUESTIONS[qIdx]?.choices[choiceIdx];
       if (selectedChoice) {
@@ -93,11 +123,13 @@ const App: React.FC = () => {
         });
       }
     });
+
     const winner = (Object.keys(ANIMAL_DATA) as AnimalKey[]).reduce((a, b) =>
       scoreMap[a] >= scoreMap[b] ? a : b
     );
+
     return ANIMAL_DATA[winner];
-  }, [answers, viewingAnimal]);
+  }, [answers, myResultKey]);
 
   const resultAnimal = useMemo(() => {
     if (state === "RESULT") return calculateResult();
@@ -140,6 +172,7 @@ const App: React.FC = () => {
         {(state === "RESULT" || state === "VIEW_OTHER") && resultAnimal && (
           <ResultScreen
             animal={resultAnimal}
+            myResultKey={myResultKey}
             onRestart={resetToStart}
             onViewAnimal={handleViewAnimal}
             isBrowsing={state === "VIEW_OTHER"}
@@ -348,12 +381,14 @@ const AdPlaceholder: React.FC = () => {
 
 const ResultScreen: React.FC<{
   animal: AnimalInfo;
+  myResultKey: AnimalKey | null;
   onRestart: () => void;
   onViewAnimal: (name: string, context: MatchContext) => void;
   isBrowsing: boolean;
   viewingContext: MatchContext;
   onGoBackToResult: () => void;
 }> = ({
+  myResultKey,
   animal,
   onRestart,
   onViewAnimal,
@@ -387,7 +422,9 @@ const ResultScreen: React.FC<{
   };
 
   const copyToClipboard = () => {
-    const shareUrl = `${window.location.origin}${window.location.pathname}?result=${animal.key}`;
+    const keyToShare = myResultKey ?? animal.key; // ✅ 내 결과 우선
+    const shareUrl = `${window.location.origin}${window.location.pathname}?result=${keyToShare}`;
+
     if (navigator.clipboard) {
       navigator.clipboard
         .writeText(shareUrl)
@@ -402,7 +439,7 @@ const ResultScreen: React.FC<{
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
-      alert("나의 결과 전용 링크가 복사되었습니다!");
+      alert("결과 링크가 복사되었습니다!");
     }
   };
 
